@@ -1,0 +1,137 @@
+import 'package:flutter/foundation.dart';
+
+import 'package:hammasir_student/core/network/api_exception.dart';
+import 'package:hammasir_student/core/utils/safe_notifier.dart';
+import 'package:hammasir_student/data/models/student_profile.dart';
+import 'package:hammasir_student/data/models/user_profile.dart';
+import 'package:hammasir_student/data/repositories/auth_repository.dart';
+import 'package:hammasir_student/data/repositories/student_repository.dart';
+
+enum SessionStatus { starting, loggedOut, loggedIn }
+
+/// وضعیت ورود کاربر؛ تنها منبع حقیقت برای «وارد شده‌ام یا نه».
+class SessionController extends ChangeNotifier with SafeNotifier {
+  SessionController({
+    required AuthRepository auth,
+    required StudentRepository students,
+  })  : _auth = auth,
+        _students = students;
+
+  final AuthRepository _auth;
+  final StudentRepository _students;
+
+  SessionStatus _status = SessionStatus.starting;
+  UserProfile? _profile;
+  StudentProfile? _student;
+  String? _startupError;
+  String? _notice;
+  bool _busy = false;
+
+  SessionStatus get status => _status;
+  UserProfile? get profile => _profile;
+
+  /// وضعیت تخلف و مسدودی؛ اگر بک‌اند پشتیبانی نکند null است.
+  StudentProfile? get student => _student;
+
+  /// خطای شبکه هنگام باز شدن اپ (با دکمه‌ی تلاش دوباره).
+  String? get startupError => _startupError;
+
+  /// پیام یک‌بار مصرف برای صفحه‌ی ورود (مثل «نشست منقضی شد»).
+  String? get notice => _notice;
+  bool get busy => _busy;
+
+  int? get studentId => _profile?.studentId;
+
+  /// جنسیت دانشجو برای فیلتر سرویس‌ها؛ اگر نامشخص باشد null است.
+  String? get gender => _student?.gender;
+
+  /// هنگام باز شدن اپ: اگر توکن ذخیره دارد، حساب را بررسی می‌کند.
+  Future<void> restore() async {
+    _startupError = null;
+    _status = SessionStatus.starting;
+    notifyListeners();
+
+    if (!await _auth.hasToken()) {
+      _status = SessionStatus.loggedOut;
+      notifyListeners();
+      return;
+    }
+
+    try {
+      await _enter(await _auth.fetchProfile());
+    } on ApiException catch (e) {
+      if (e.isNetwork) {
+        _startupError = e.message;
+      } else {
+        await _auth.logout();
+        _status = SessionStatus.loggedOut;
+      }
+      notifyListeners();
+    }
+  }
+
+  /// true یعنی ورود موفق بود. در خطا [error] پیام را برمی‌گرداند.
+  Future<String?> login(String username, String password) async {
+    if (_busy) return null;
+    _busy = true;
+    _notice = null;
+    notifyListeners();
+
+    try {
+      await _auth.login(username, password);
+      await _enter(await _auth.fetchProfile());
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } finally {
+      _busy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _enter(UserProfile profile) async {
+    if (!profile.isStudent || profile.studentId == null) {
+      await _auth.logout();
+      _status = SessionStatus.loggedOut;
+      throw const ApiException(
+        'این برنامه مخصوص دانشجوهاست و حساب شما دانشجو نیست',
+      );
+    }
+
+    _profile = profile;
+    _status = SessionStatus.loggedIn;
+    notifyListeners();
+
+    await refreshStudent();
+  }
+
+  Future<void> refreshStudent() async {
+    try {
+      _student = await _students.profile();
+      notifyListeners();
+    } on ApiException {
+      // نبودن این کارت مانع کار اپ نیست.
+    }
+  }
+
+  Future<void> logout() async {
+    await _auth.logout();
+    _reset();
+    notifyListeners();
+  }
+
+  /// وقتی سرور توکن را رد کرد (401).
+  void expire() {
+    if (_status != SessionStatus.loggedIn) return;
+    _auth.logout();
+    _reset();
+    _notice = 'نشست شما منقضی شد؛ دوباره وارد شوید';
+    notifyListeners();
+  }
+
+  void _reset() {
+    _profile = null;
+    _student = null;
+    _status = SessionStatus.loggedOut;
+  }
+}
