@@ -3,6 +3,7 @@ import 'package:hammasir_student/core/network/api_exception.dart';
 import 'package:hammasir_student/core/storage/token_store.dart';
 import 'package:hammasir_student/core/utils/json_utils.dart';
 import 'package:hammasir_student/data/models/user_profile.dart';
+import 'package:hammasir_student/l10n/l10n.dart';
 
 class AuthRepository {
   AuthRepository({required ApiClient api, required TokenStore tokens})
@@ -27,7 +28,7 @@ class AuthRepository {
 
     final token = asString(asMap(data)?['access_token']);
     if (token.isEmpty) {
-      throw const ApiException('پاسخ ورود نامعتبر است');
+      throw ApiException(L10n.t('err.login_invalid'));
     }
     await _tokens.save(token);
   }
@@ -36,7 +37,7 @@ class AuthRepository {
     final data = await _api.get('/users/me');
     final map = asMap(data);
     if (map == null) {
-      throw const ApiException('اطلاعات حساب دریافت نشد');
+      throw ApiException(L10n.t('err.profile_failed'));
     }
     return UserProfile.fromJson(map);
   }

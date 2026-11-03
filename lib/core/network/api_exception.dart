@@ -6,7 +6,7 @@ class ApiException implements Exception {
     this.isNetwork = false,
   });
 
-  /// پیام قابل نمایش به کاربر (فارسی).
+  /// پیام قابل نمایش به کاربر. پیام سرور (فارسی) یا متن عمومی به زبان فعلی اپ.
   final String message;
 
   /// کد HTTP؛ برای خطاهای شبکه null است.

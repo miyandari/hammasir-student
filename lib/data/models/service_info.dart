@@ -1,4 +1,5 @@
 import 'package:hammasir_student/core/utils/json_utils.dart';
+import 'package:hammasir_student/l10n/l10n.dart';
 
 /// سرویس (خط) مثل «خوابگاه ← دانشکده».
 class ServiceInfo {
@@ -22,7 +23,7 @@ class ServiceInfo {
     return ServiceInfo(
       id: asInt(json['id']) ?? 0,
       routeId: asInt(json['route_id']) ?? 0,
-      name: asString(json['name'], 'سرویس'),
+      name: asString(json['name'], L10n.t('common.service')),
       code: asString(json['code']),
       genderRestriction: asString(json['gender_restriction'], 'mixed'),
     );

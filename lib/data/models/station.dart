@@ -1,6 +1,7 @@
 import 'package:latlong2/latlong.dart';
 
 import 'package:hammasir_student/core/utils/json_utils.dart';
+import 'package:hammasir_student/l10n/l10n.dart';
 
 class Station {
   const Station({
@@ -27,7 +28,7 @@ class Station {
   factory Station.fromJson(Map<String, dynamic> json) {
     return Station(
       id: asInt(json['id']) ?? 0,
-      name: asString(json['name'], 'ایستگاه'),
+      name: asString(json['name'], L10n.t('common.station')),
       address: asNullableString(json['address']),
       latitude: asDouble(json['latitude']),
       longitude: asDouble(json['longitude']),

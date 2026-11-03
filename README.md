@@ -40,6 +40,17 @@ flutter test
 <string>برای اسکن QR ایستگاه به دوربین نیاز است.</string>
 ```
 
+### مجوزهای نسخه‌ی ۲ (اثر انگشت، عکس پروفایل)
+
+- **android/app/src/main/AndroidManifest.xml**: `<uses-permission android:name="android.permission.USE_BIOMETRIC"/>`
+- **MainActivity.kt**: به‌جای `FlutterActivity` از `FlutterFragmentActivity` ارث‌بری کند (الزام local_auth).
+- **android/app/src/main/res/values/styles.xml** (و values-night): والد `LaunchTheme` و `NormalTheme` را یک تم AppCompat/`Theme.AppCompat.DayNight.NoActionBar` بگذارید.
+- **ios/Runner/Info.plist**: `NSFaceIDUsageDescription` و `NSPhotoLibraryUsageDescription` را با متن دلخواه اضافه کنید.
+- مسیریابی خیابانی از OSRM می‌آید (آدرس پیش‌فرض نمایشی است و ممکن است در دسترس نباشد؛ در این حالت خط مستقیم رسم می‌شود). برای سرور خودتان: `--dart-define=ROUTING_URL=https://...`
+- **موقعیت من (geolocator)**: در AndroidManifest دو مجوز `ACCESS_FINE_LOCATION` و `ACCESS_COARSE_LOCATION` را اضافه کنید؛ در iOS کلید `NSLocationWhenInUseUsageDescription` را در Info.plist.
+- **اعلان‌ها**: انتخاب «نوتیفیکیشن دستگاه / فقط داخل برنامه» برای هر دسته ذخیره می‌شود، ولی ارسال نوتیفیکیشن وقتی اپ بسته است نیاز به سرویس push (مثل FCM) و ارسال از بک‌اند دارد که هنوز ساخته نشده است.
+- عکس پروفایل فعلاً فقط روی همین دستگاه ذخیره می‌شود.
+
 ## اجرا
 
 بک‌اند باید روی پورت ۸۰۰۰ اجرا باشد (`uvicorn app.main:app --host 0.0.0.0 --port 8000`).

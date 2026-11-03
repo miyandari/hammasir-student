@@ -6,6 +6,7 @@ import 'package:hammasir_student/core/utils/json_utils.dart';
 import 'package:hammasir_student/data/models/live_eta.dart';
 import 'package:hammasir_student/data/models/trip.dart';
 import 'package:hammasir_student/data/models/trip_availability.dart';
+import 'package:hammasir_student/l10n/l10n.dart';
 
 class TripRepository {
   TripRepository(this._api);
@@ -29,7 +30,7 @@ class TripRepository {
   Future<Trip> byId(int id) async {
     final data = await _api.get('/trips/$id');
     final map = asMap(data);
-    if (map == null) throw const ApiException('سفر پیدا نشد');
+    if (map == null) throw ApiException(L10n.t('err.trip_not_found'));
     return Trip.fromJson(map);
   }
 

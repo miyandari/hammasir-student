@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:hammasir_student/core/theme/app_palette.dart';
+import 'package:hammasir_student/l10n/l10n.dart';
 
 class CenteredLoader extends StatelessWidget {
   const CenteredLoader({super.key});
@@ -41,7 +42,7 @@ class ErrorState extends StatelessWidget {
             style: OutlinedButton.styleFrom(
               minimumSize: const Size(160, 48),
             ),
-            child: const Text('تلاش دوباره'),
+            child: Text(context.t('common.retry')),
           ),
         ),
       ],

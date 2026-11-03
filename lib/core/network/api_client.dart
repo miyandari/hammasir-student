@@ -7,6 +7,7 @@ import 'package:hammasir_student/core/config/app_config.dart';
 import 'package:hammasir_student/core/network/api_exception.dart';
 import 'package:hammasir_student/core/storage/token_store.dart';
 import 'package:hammasir_student/core/utils/json_utils.dart';
+import 'package:hammasir_student/l10n/l10n.dart';
 
 /// تنها نقطه‌ی ارتباط با Backend.
 ///
@@ -89,10 +90,7 @@ class ApiClient {
       final token = await _tokens.read();
 
       if (token == null || token.isEmpty) {
-        throw const ApiException(
-          'ابتدا وارد حساب خود شوید',
-          statusCode: 401,
-        );
+        throw ApiException(L10n.t('err.login_first'), statusCode: 401);
       }
 
       headers['Authorization'] = 'Bearer $token';
@@ -103,15 +101,9 @@ class ApiClient {
     try {
       response = await call(headers).timeout(AppConfig.requestTimeout);
     } on TimeoutException {
-      throw const ApiException(
-        'پاسخ سرور دیر شد؛ اینترنت خود را بررسی کنید',
-        isNetwork: true,
-      );
+      throw ApiException(L10n.t('err.timeout'), isNetwork: true);
     } catch (_) {
-      throw const ApiException(
-        'ارتباط با سرور برقرار نشد',
-        isNetwork: true,
-      );
+      throw ApiException(L10n.t('err.network'), isNetwork: true);
     }
 
     final decoded = _decode(response);
@@ -122,10 +114,7 @@ class ApiClient {
 
     if (response.statusCode == 401 && auth) {
       onUnauthorized?.call();
-      throw const ApiException(
-        'نشست شما منقضی شده است',
-        statusCode: 401,
-      );
+      throw ApiException(L10n.t('err.session_expired'), statusCode: 401);
     }
 
     throw ApiException(
@@ -151,15 +140,9 @@ class ApiClient {
       return detail;
     }
 
-    if (statusCode == 422) {
-      return 'اطلاعات واردشده معتبر نیست';
-    }
-
-    if (statusCode >= 500) {
-      return 'خطای سرور؛ کمی بعد دوباره تلاش کنید';
-    }
-
-    return 'درخواست ناموفق بود';
+    if (statusCode == 422) return L10n.t('err.invalid_input');
+    if (statusCode >= 500) return L10n.t('err.server');
+    return L10n.t('err.request_generic');
   }
 
   void close() => _client.close();

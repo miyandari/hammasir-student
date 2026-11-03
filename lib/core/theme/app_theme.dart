@@ -12,16 +12,24 @@ class AppTheme {
   static ThemeData get dark => _build(AppPalette.dark, Brightness.dark);
 
   static ThemeData _build(AppPalette p, Brightness brightness) {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: p.brand,
+    final scheme = ColorScheme(
       brightness: brightness,
-    ).copyWith(
       primary: p.brand,
       onPrimary: p.onBrand,
+      primaryContainer: p.brandSoft,
+      onPrimaryContainer: p.brandDeep,
+      secondary: p.accent,
+      onSecondary: p.text,
+      error: p.danger,
+      onError: Colors.white,
+      errorContainer: p.dangerSoft,
+      onErrorContainer: p.danger,
       surface: p.surface,
       onSurface: p.text,
-      error: p.danger,
+      onSurfaceVariant: p.textMuted,
+      surfaceContainerHighest: p.background,
       outline: p.border,
+      outlineVariant: p.border,
     );
 
     final shape16 = RoundedRectangleBorder(
@@ -108,6 +116,25 @@ class AppTheme {
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(color: p.danger, width: 1.6),
         ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: p.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: p.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.all(Colors.white),
+        trackColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected) ? p.brand : p.border,
+        ),
+        trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
       ),
       navigationBarTheme: NavigationBarThemeData(
         height: 72,

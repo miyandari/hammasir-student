@@ -1,6 +1,7 @@
 import 'package:latlong2/latlong.dart';
 
 import 'package:hammasir_student/core/utils/json_utils.dart';
+import 'package:hammasir_student/l10n/l10n.dart';
 
 /// ایستگاه بعدی/قبلی در پاسخ ETA.
 class EtaStation {
@@ -24,7 +25,7 @@ class EtaStation {
 
     return EtaStation(
       stationId: id,
-      name: asString(map['station_name'], 'ایستگاه'),
+      name: asString(map['station_name'], L10n.t('common.station')),
       etaSeconds: asInt(map['eta_seconds']),
       distanceMeters: asDouble(map['distance_from_vehicle_meters']),
     );

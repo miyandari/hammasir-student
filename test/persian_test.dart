@@ -1,8 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:hammasir_student/core/utils/persian.dart';
+import 'package:hammasir_student/l10n/l10n.dart';
 
 void main() {
+  setUp(() => L10n.lang = 'fa');
+  tearDown(() => L10n.lang = 'fa');
+
   group('Fa', () {
     test('digits تبدیل ارقام لاتین به فارسی', () {
       expect(Fa.digits('12:30'), '۱۲:۳۰');
@@ -34,6 +38,27 @@ void main() {
           '۵ دقیقه پیش');
       expect(Fa.relative(now.subtract(const Duration(hours: 3)), now: now),
           '۳ ساعت پیش');
+    });
+  });
+
+  group('Fa (English)', () {
+    setUp(() => L10n.lang = 'en');
+
+    test('digits لاتین می‌ماند', () {
+      expect(Fa.digits('12:30'), '12:30');
+      expect(Fa.digits(7), '7');
+    });
+
+    test('dayLabel و duration', () {
+      final now = DateTime(2026, 5, 10, 12);
+      expect(Fa.dayLabel(DateTime(2026, 5, 11, 8), now: now), 'Tomorrow');
+      expect(Fa.duration(240), '4 min');
+    });
+
+    test('relative', () {
+      final now = DateTime(2026, 5, 10, 12);
+      expect(Fa.relative(now.subtract(const Duration(minutes: 5)), now: now),
+          '5 min ago');
     });
   });
 }

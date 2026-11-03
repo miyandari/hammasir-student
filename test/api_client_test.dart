@@ -96,7 +96,7 @@ void main() {
       throwsA(isA<ApiException>().having(
         (e) => e.message,
         'message',
-        'اطلاعات واردشده معتبر نیست',
+        'اطلاعات واردشده معتبر نیست.',
       )),
     );
     await expectLater(

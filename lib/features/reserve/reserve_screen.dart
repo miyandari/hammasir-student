@@ -12,8 +12,11 @@ import 'package:hammasir_student/core/widgets/soft_banner.dart';
 import 'package:hammasir_student/core/widgets/state_views.dart';
 import 'package:hammasir_student/core/widgets/status_chip.dart';
 import 'package:hammasir_student/data/models/service_info.dart';
+import 'package:hammasir_student/features/shared/status_labels.dart';
+import 'package:hammasir_student/l10n/l10n.dart';
 import 'package:hammasir_student/data/models/trip.dart';
 import 'package:hammasir_student/features/reserve/reserve_controller.dart';
+import 'package:hammasir_student/state/activity_store.dart';
 import 'package:hammasir_student/features/shared/page_header.dart';
 import 'package:hammasir_student/features/shared/ui_helpers.dart';
 
@@ -28,6 +31,8 @@ class ReserveScreen extends StatefulWidget {
 }
 
 class _ReserveScreenState extends State<ReserveScreen> {
+  String _query = '';
+
   late final ReserveController _controller;
   late final Stores _stores;
 
@@ -43,6 +48,7 @@ class _ReserveScreenState extends State<ReserveScreen> {
       catalog: deps.catalog,
       trips: deps.trips,
       reservations: deps.reservations,
+      routing: deps.routing,
     )..load();
   }
 
@@ -60,13 +66,30 @@ class _ReserveScreenState extends State<ReserveScreen> {
     await _stores.myTrips.load();
     if (!mounted) return;
 
-    Navigator.of(context).pop();
-    showMessage(
-      context,
-      reservation.isWaitlisted
-          ? 'ظرفیت پر بود؛ در لیست انتظار قرار گرفتید'
-          : 'رزرو شما ثبت شد',
+    final waitlisted = reservation.isWaitlisted;
+    _stores.activity.record(
+      waitlisted ? ActivityType.waitlist : ActivityType.reserve,
+      detail: _controller.title,
     );
+    final station = _controller.stationName(reservation.stationId);
+
+    await showSuccess(
+      context,
+      title: waitlisted
+          ? context.t('reserve.waitlisted_title')
+          : context.t('reserve.done_title'),
+      message: waitlisted
+          ? context.t('reserve.waitlisted_msg')
+          : context.t('reserve.done_msg'),
+      buttonLabel: context.t('reserve.done_button'),
+      extra: _SuccessSummary(
+        service: _controller.title,
+        when: Fa.dayAndTime(widget.trip.plannedDeparture),
+        station: station,
+      ),
+    );
+    if (!mounted) return;
+    Navigator.of(context).pop();
   }
 
   @override
@@ -79,11 +102,11 @@ class _ReserveScreenState extends State<ReserveScreen> {
         final c = _controller;
 
         return Scaffold(
-          appBar: AppBar(title: const Text('رزرو صندلی')),
+          appBar: AppBar(title: Text(context.t('reserve.title'))),
           body: switch (c.status) {
             LoadStatus.idle || LoadStatus.loading => const CenteredLoader(),
             LoadStatus.error => ErrorState(
-                message: c.error ?? 'خطا در دریافت اطلاعات',
+                message: c.error ?? context.t('common.load_failed'),
                 onRetry: c.load,
               ),
             LoadStatus.ready => _content(context, c, p),
@@ -102,8 +125,8 @@ class _ReserveScreenState extends State<ReserveScreen> {
                             )
                           : Text(
                               c.willBeWaitlisted
-                                  ? 'ثبت در لیست انتظار'
-                                  : 'تأیید رزرو',
+                                  ? context.t('reserve.submit_waitlist')
+                                  : context.t('reserve.submit'),
                             ),
                     ),
                   ),
@@ -130,7 +153,7 @@ class _ReserveScreenState extends State<ReserveScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                widget.service.name,
+                c.title,
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -142,6 +165,11 @@ class _ReserveScreenState extends State<ReserveScreen> {
                 Fa.dayAndTime(widget.trip.plannedDeparture),
                 style: TextStyle(color: p.textMuted),
               ),
+              if (StatusLabel.gender(widget.service.genderRestriction)
+                  case final gender?) ...[
+                const SizedBox(height: 8),
+                StatusChip(label: gender.text, tone: gender.tone),
+              ],
               if (a != null) ...[
                 const SizedBox(height: 8),
                 Wrap(
@@ -149,17 +177,23 @@ class _ReserveScreenState extends State<ReserveScreen> {
                   runSpacing: 6,
                   children: [
                     StatusChip(
-                      label: 'صندلی خالی: ${Fa.digits(a.seatedAvailable)}',
+                      label: context.t('reserve.seats_free', {
+                        'n': Fa.digits(a.seatedAvailable),
+                      }),
                       tone: a.hasSeat ? Tone.success : Tone.danger,
                     ),
                     if (a.allowStanding)
                       StatusChip(
-                        label: 'ایستاده: ${Fa.digits(a.standingAvailable)}',
+                        label: context.t('reserve.standing_free', {
+                          'n': Fa.digits(a.standingAvailable),
+                        }),
                         tone: a.hasStanding ? Tone.brand : Tone.neutral,
                       ),
                     if (a.waitlistCount > 0)
                       StatusChip(
-                        label: 'لیست انتظار: ${Fa.digits(a.waitlistCount)}',
+                        label: context.t('reserve.waitlist_count', {
+                          'n': Fa.digits(a.waitlistCount),
+                        }),
                         tone: Tone.warning,
                       ),
                   ],
@@ -174,48 +208,66 @@ class _ReserveScreenState extends State<ReserveScreen> {
             borderRadius: BorderRadius.circular(20),
             child: SizedBox(
               height: 180,
-              child: RouteMap(stops: mapStops, interactive: false),
+              child: RouteMap(
+                stops: mapStops,
+                path: c.path,
+                interactive: false,
+              ),
             ),
           ),
         ],
-        const SectionTitle('ایستگاه سوار شدن'),
+        SectionTitle(context.t('reserve.station')),
         if (c.stops.isEmpty)
-          const SoftBanner(
-            message: 'برای این سرویس ایستگاهی ثبت نشده است.',
+          SoftBanner(
+            message: context.t('reserve.no_stations'),
             icon: Icons.info_outline,
           )
         else
-          for (final info in c.stops)
+          if (c.stops.length > 4)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: TextField(
+                onChanged: (v) => setState(() => _query = v.trim()),
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: context.t('reserve.search_station'),
+                ),
+              ),
+            ),
+          for (final info in c.stops.where(
+            (i) => _query.isEmpty || i.station.name.contains(_query),
+          ))
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: ChoiceTile(
                 title: info.station.name,
                 subtitle: info.stop.minutesFromStart == null
                     ? null
-                    : '${Fa.digits(info.stop.minutesFromStart)} دقیقه بعد از شروع',
+                    : context.t('reserve.minutes_from_start', {
+                        'n': Fa.digits(info.stop.minutesFromStart),
+                      }),
                 selected: info.station.id == c.stationId,
                 onTap: () => c.selectStation(info.station.id),
               ),
             ),
-        const SectionTitle('نوع جا'),
+        SectionTitle(context.t('reserve.seat_type')),
         ChoiceTile(
-          title: 'نشسته',
+          title: context.t('reserve.seated'),
           selected: !c.standing,
           onTap: () => c.selectStanding(false),
         ),
-        if (widget.trip.allowStanding) ...[
+        if (c.canChooseStanding) ...[
           const SizedBox(height: 8),
           ChoiceTile(
-            title: 'ایستاده',
+            title: context.t('reserve.standing'),
             selected: c.standing,
             onTap: () => c.selectStanding(true),
           ),
         ],
         if (c.willBeWaitlisted) ...[
           const SizedBox(height: 12),
-          const SoftBanner(
-            message:
-                'ظرفیت این نوع جا پر است و رزرو شما در لیست انتظار ثبت می‌شود.',
+          SoftBanner(
+            message: context.t('reserve.waitlist_notice'),
             icon: Icons.hourglass_bottom,
           ),
         ],
@@ -228,6 +280,48 @@ class _ReserveScreenState extends State<ReserveScreen> {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _SuccessSummary extends StatelessWidget {
+  const _SuccessSummary({
+    required this.service,
+    required this.when,
+    required this.station,
+  });
+
+  final String service;
+  final String when;
+  final String? station;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: p.brandSoft,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            service,
+            style: TextStyle(fontWeight: FontWeight.w700, color: p.text),
+          ),
+          const SizedBox(height: 4),
+          Text(when, style: TextStyle(color: p.textMuted)),
+          if (station != null)
+            Text(
+              context.t('booking.station', {'name': station}),
+              style: TextStyle(color: p.textMuted),
+            ),
+        ],
+      ),
     );
   }
 }

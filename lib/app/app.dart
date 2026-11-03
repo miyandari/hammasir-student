@@ -2,16 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'package:hammasir_student/app/deps.dart';
+import 'package:hammasir_student/app/settings_scope.dart';
 import 'package:hammasir_student/app/shell.dart';
 import 'package:hammasir_student/app/stores.dart';
-import 'package:hammasir_student/app/theme_scope.dart';
 import 'package:hammasir_student/core/theme/app_theme.dart';
+import 'package:hammasir_student/features/auth/language_screen.dart';
+import 'package:hammasir_student/features/auth/lock_screen.dart';
 import 'package:hammasir_student/features/auth/login_screen.dart';
 import 'package:hammasir_student/features/auth/splash_screen.dart';
+import 'package:hammasir_student/l10n/l10n.dart';
+import 'package:hammasir_student/state/locale_controller.dart';
 import 'package:hammasir_student/state/session_controller.dart';
 import 'package:hammasir_student/state/theme_controller.dart';
 
-/// ریشه‌ی برنامه: وابستگی‌ها، نشست، تم و ذخیره‌گاه‌های مشترک.
+/// ریشه‌ی برنامه: وابستگی‌ها، نشست، تم، زبان و ذخیره‌گاه‌های مشترک.
 class HammasirApp extends StatefulWidget {
   const HammasirApp({super.key, this.deps});
 
@@ -27,8 +31,11 @@ class _HammasirAppState extends State<HammasirApp> {
   late final SessionController _session = SessionController(
     auth: _deps.auth,
     students: _deps.students,
+    settings: _deps.settings,
+    biometric: _deps.biometric,
   );
   late final ThemeController _theme = ThemeController(_deps.settings);
+  late final LocaleController _locale = LocaleController(_deps.settings);
 
   Stores? _stores;
 
@@ -37,8 +44,13 @@ class _HammasirAppState extends State<HammasirApp> {
     super.initState();
     _deps.api.onUnauthorized = _session.expire;
     _session.addListener(_syncStores);
-    _theme.load();
-    _session.restore();
+    _boot();
+  }
+
+  /// اول زبان و تم خوانده می‌شود تا صفحه‌ی اول با زبان درست ساخته شود.
+  Future<void> _boot() async {
+    await Future.wait([_theme.load(), _locale.load()]);
+    await _session.restore();
   }
 
   /// با هر ورود، ذخیره‌گاه‌های تازه؛ با هر خروج، دور ریختن آن‌ها.
@@ -46,7 +58,13 @@ class _HammasirAppState extends State<HammasirApp> {
     final loggedIn = _session.status == SessionStatus.loggedIn;
 
     if (loggedIn && _stores == null) {
-      setState(() => _stores = Stores(_deps, session: _session));
+      final stores = Stores(_deps, session: _session);
+      final userId = _session.profile?.id;
+      if (userId != null) {
+        stores.avatar.load(userId);
+        stores.activity.load(userId);
+      }
+      setState(() => _stores = stores);
     } else if (!loggedIn && _stores != null) {
       final old = _stores!;
       setState(() => _stores = null);
@@ -59,17 +77,24 @@ class _HammasirAppState extends State<HammasirApp> {
     _session.removeListener(_syncStores);
     _session.dispose();
     _theme.dispose();
+    _locale.dispose();
     _stores?.dispose();
     if (widget.deps == null) _deps.dispose();
     super.dispose();
   }
 
   Widget _home() {
+    if (!_locale.loaded) return SplashScreen(session: _session);
+
     switch (_session.status) {
       case SessionStatus.starting:
         return SplashScreen(session: _session);
+      case SessionStatus.locked:
+        return LockScreen(session: _session);
       case SessionStatus.loggedOut:
-        return LoginScreen(session: _session);
+        return _locale.chosen
+            ? LoginScreen(session: _session)
+            : const LanguageScreen();
       case SessionStatus.loggedIn:
         // ذخیره‌گاه‌ها در همین فریم ساخته می‌شوند؛ این گارد فقط محافظ است.
         if (_stores == null) return SplashScreen(session: _session);
@@ -82,17 +107,18 @@ class _HammasirAppState extends State<HammasirApp> {
     return DepsScope(
       deps: _deps,
       child: ListenableBuilder(
-        listenable: Listenable.merge([_session, _theme]),
+        listenable: Listenable.merge([_session, _theme, _locale]),
         builder: (context, _) {
           final app = MaterialApp(
-            title: 'هم‌مسیر',
+            onGenerateTitle: (context) => context.t('app.name'),
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light,
             darkTheme: AppTheme.dark,
             themeMode: _theme.mode,
-            locale: const Locale('fa'),
-            supportedLocales: const [Locale('fa')],
+            locale: _locale.locale,
+            supportedLocales: L10n.supported,
             localizationsDelegates: const [
+              appLocalizationsDelegate,
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
@@ -100,10 +126,14 @@ class _HammasirAppState extends State<HammasirApp> {
             home: _home(),
           );
 
-          final themed = ThemeScope(controller: _theme, child: app);
+          final scoped = SettingsScope(
+            theme: _theme,
+            locale: _locale,
+            child: app,
+          );
           final stores = _stores;
-          if (stores == null) return themed;
-          return StoresScope(stores: stores, child: themed);
+          if (stores == null) return scoped;
+          return StoresScope(stores: stores, child: scoped);
         },
       ),
     );

@@ -1,24 +1,34 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:hammasir_student/core/network/api_exception.dart';
+import 'package:hammasir_student/core/security/biometric_service.dart';
+import 'package:hammasir_student/core/storage/settings_store.dart';
 import 'package:hammasir_student/core/utils/safe_notifier.dart';
 import 'package:hammasir_student/data/models/student_profile.dart';
 import 'package:hammasir_student/data/models/user_profile.dart';
 import 'package:hammasir_student/data/repositories/auth_repository.dart';
 import 'package:hammasir_student/data/repositories/student_repository.dart';
+import 'package:hammasir_student/l10n/l10n.dart';
 
-enum SessionStatus { starting, loggedOut, loggedIn }
+/// locked: توکن ذخیره است ولی تا تأیید اثر انگشت وارد نشده‌ایم.
+enum SessionStatus { starting, locked, loggedOut, loggedIn }
 
 /// وضعیت ورود کاربر؛ تنها منبع حقیقت برای «وارد شده‌ام یا نه».
 class SessionController extends ChangeNotifier with SafeNotifier {
   SessionController({
     required AuthRepository auth,
     required StudentRepository students,
+    SettingsStore? settings,
+    BiometricService? biometric,
   })  : _auth = auth,
-        _students = students;
+        _students = students,
+        _settings = settings,
+        _biometric = biometric;
 
   final AuthRepository _auth;
   final StudentRepository _students;
+  final SettingsStore? _settings;
+  final BiometricService? _biometric;
 
   SessionStatus _status = SessionStatus.starting;
   UserProfile? _profile;
@@ -57,6 +67,43 @@ class SessionController extends ChangeNotifier with SafeNotifier {
       return;
     }
 
+    if (await _biometricRequired()) {
+      _status = SessionStatus.locked;
+      notifyListeners();
+      return;
+    }
+
+    await _resume();
+  }
+
+  Future<bool> _biometricRequired() async {
+    final settings = _settings;
+    if (settings == null) return false;
+    return settings.readBiometricEnabled();
+  }
+
+  /// صفحه‌ی قفل: با اثر انگشت درست، ورود ادامه پیدا می‌کند.
+  Future<bool> unlock() async {
+    final biometric = _biometric;
+    final ok = biometric != null &&
+        await biometric.authenticate(L10n.t('biometric.reason_unlock'));
+    if (!ok) return false;
+
+    await _resume();
+    return true;
+  }
+
+  /// تلاش دوباره بعد از خطای شبکه هنگام باز شدن اپ.
+  Future<void> retry() => _resume();
+
+  /// انصراف از اثر انگشت: خروج و ورود با رمز.
+  Future<void> usePassword() => logout();
+
+  Future<void> _resume() async {
+    _startupError = null;
+    _status = SessionStatus.starting;
+    notifyListeners();
+
     try {
       await _enter(await _auth.fetchProfile());
     } on ApiException catch (e) {
@@ -93,9 +140,7 @@ class SessionController extends ChangeNotifier with SafeNotifier {
     if (!profile.isStudent || profile.studentId == null) {
       await _auth.logout();
       _status = SessionStatus.loggedOut;
-      throw const ApiException(
-        'این برنامه مخصوص دانشجوهاست و حساب شما دانشجو نیست',
-      );
+      throw ApiException(L10n.t('err.not_student'));
     }
 
     _profile = profile;
@@ -107,7 +152,7 @@ class SessionController extends ChangeNotifier with SafeNotifier {
 
   Future<void> refreshStudent() async {
     try {
-      _student = await _students.profile();
+      _student = await _students.profile(fallbackStudentId: studentId);
       notifyListeners();
     } on ApiException {
       // نبودن این کارت مانع کار اپ نیست.
@@ -125,7 +170,7 @@ class SessionController extends ChangeNotifier with SafeNotifier {
     if (_status != SessionStatus.loggedIn) return;
     _auth.logout();
     _reset();
-    _notice = 'نشست شما منقضی شد؛ دوباره وارد شوید';
+    _notice = L10n.t('err.session_expired_login');
     notifyListeners();
   }
 
@@ -133,5 +178,6 @@ class SessionController extends ChangeNotifier with SafeNotifier {
     _profile = null;
     _student = null;
     _status = SessionStatus.loggedOut;
+    _settings?.saveBiometricEnabled(false);
   }
 }

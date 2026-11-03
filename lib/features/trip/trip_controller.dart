@@ -8,10 +8,12 @@ import 'package:hammasir_student/core/network/api_exception.dart';
 import 'package:hammasir_student/core/utils/load_status.dart';
 import 'package:hammasir_student/core/utils/safe_notifier.dart';
 import 'package:hammasir_student/data/models/live_eta.dart';
+import 'package:hammasir_student/data/models/route_summary.dart';
 import 'package:hammasir_student/data/models/service_info.dart';
 import 'package:hammasir_student/data/models/station.dart';
 import 'package:hammasir_student/data/models/trip.dart';
 import 'package:hammasir_student/data/repositories/catalog_repository.dart';
+import 'package:hammasir_student/data/repositories/routing_repository.dart';
 import 'package:hammasir_student/data/repositories/tracking_repository.dart';
 import 'package:hammasir_student/data/repositories/trip_repository.dart';
 
@@ -25,9 +27,11 @@ class TripController extends ChangeNotifier with SafeNotifier {
     required TripRepository trips,
     required CatalogRepository catalog,
     required TrackingRepository tracking,
+    required RoutingRepository routing,
   })  : _trips = trips,
         _catalog = catalog,
-        _tracking = tracking;
+        _tracking = tracking,
+        _routing = routing;
 
   static const int _maxSocketAttempts = 3;
 
@@ -35,6 +39,7 @@ class TripController extends ChangeNotifier with SafeNotifier {
   final TripRepository _trips;
   final CatalogRepository _catalog;
   final TrackingRepository _tracking;
+  final RoutingRepository _routing;
 
   LoadStatus _status = LoadStatus.idle;
   String? _error;
@@ -43,6 +48,7 @@ class TripController extends ChangeNotifier with SafeNotifier {
   List<RouteStationInfo> _stops = const [];
   LiveEta? _eta;
   LatLng? _vehicle;
+  List<LatLng>? _path;
   bool _stale = false;
 
   Timer? _timer;
@@ -54,7 +60,13 @@ class TripController extends ChangeNotifier with SafeNotifier {
   String? get error => _error;
   Trip? get trip => _trip;
   ServiceInfo? get service => _service;
+
+  /// «سرویس از X به Y» یا نام ثبت‌شده‌ی سرویس.
+  String? get title => RouteSummary.of(_stops)?.title ?? _service?.name;
   List<RouteStationInfo> get stops => _stops;
+
+  /// مسیر خیابانی؛ تا رسیدن پاسخ مسیریابی (یا در صورت خطا) null است.
+  List<LatLng>? get path => _path;
   LiveEta? get eta => _eta;
 
   /// آخرین موقعیت شناخته‌شده‌ی خودرو.
@@ -87,11 +99,24 @@ class TripController extends ChangeNotifier with SafeNotifier {
       _status = LoadStatus.ready;
       notifyListeners();
 
+      _loadPath();
       await _refreshLive(trip);
       _timer = Timer.periodic(AppConfig.livePollInterval, (_) => _tick());
     } on ApiException catch (e) {
       _error = e.message;
       _status = LoadStatus.error;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _loadPath() async {
+    final points = [
+      for (final info in _stops)
+        if (info.station.point case final point?) point,
+    ];
+    final path = await _routing.drivingPath(points);
+    if (path != null && !isDisposed) {
+      _path = path;
       notifyListeners();
     }
   }

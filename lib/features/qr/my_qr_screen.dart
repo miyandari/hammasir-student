@@ -7,6 +7,7 @@ import 'package:hammasir_student/core/network/api_exception.dart';
 import 'package:hammasir_student/core/theme/app_palette.dart';
 import 'package:hammasir_student/core/utils/persian.dart';
 import 'package:hammasir_student/core/widgets/state_views.dart';
+import 'package:hammasir_student/l10n/l10n.dart';
 
 /// کد QR دانشجو برای نشان دادن به راننده.
 class MyQrScreen extends StatefulWidget {
@@ -37,7 +38,7 @@ class _MyQrScreenState extends State<MyQrScreen> {
     if (studentId == null) {
       setState(() {
         _loading = false;
-        _error = 'حساب شما به دانشجو متصل نیست';
+        _error = L10n.t('err.no_student');
       });
       return;
     }
@@ -70,7 +71,7 @@ class _MyQrScreenState extends State<MyQrScreen> {
     final student = _stores.session.student;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('کد QR من')),
+      appBar: AppBar(title: Text(context.t('qr.title'))),
       body: _loading
           ? const CenteredLoader()
           : _error != null
@@ -91,7 +92,9 @@ class _MyQrScreenState extends State<MyQrScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
-                          'شماره دانشجویی: ${Fa.digits(student.studentNumber)}',
+                          context.t('profile.student_number', {
+                            'n': Fa.digits(student.studentNumber),
+                          }),
                           textAlign: TextAlign.center,
                           style: TextStyle(color: p.textMuted),
                         ),
@@ -114,7 +117,7 @@ class _MyQrScreenState extends State<MyQrScreen> {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'هنگام سوار شدن این کد را به راننده نشان دهید.',
+                      context.t('qr.hint'),
                       textAlign: TextAlign.center,
                       style: TextStyle(color: p.textMuted),
                     ),

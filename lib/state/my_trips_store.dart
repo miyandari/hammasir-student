@@ -10,23 +10,43 @@ import 'package:hammasir_student/data/models/trip.dart';
 import 'package:hammasir_student/data/repositories/catalog_repository.dart';
 import 'package:hammasir_student/data/repositories/reservation_repository.dart';
 import 'package:hammasir_student/data/repositories/trip_repository.dart';
+import 'package:hammasir_student/l10n/l10n.dart';
 
 /// یک رزرو همراه با سفر و سرویس آن.
 class Booking {
-  const Booking({required this.reservation, required this.trip, this.service});
+  const Booking({
+    required this.reservation,
+    required this.trip,
+    this.service,
+    this.boarded = false,
+    this.rated = false,
+  });
 
   final Reservation reservation;
   final Trip trip;
   final ServiceInfo? service;
 
-  String get title => service?.name ?? 'سرویس';
+  /// دانشجو در این سفر واقعاً سوار شده است.
+  final bool boarded;
+
+  /// برای این سفر امتیاز ثبت شده است.
+  final bool rated;
+
+  String get title => service?.name ?? L10n.t('common.service');
 
   /// سفر هنوز تمام نشده و رزرو فعال/در انتظار است.
   bool get isUpcoming => reservation.isLiveBooking && !trip.isFinished;
 
-  /// سفر تمام شده و دانشجو واقعاً رزرو فعال داشته است.
+  /// رزرو لغو شده ولی سفر هنوز باز است؛ می‌توان دوباره رزرو کرد.
+  bool get canRebook =>
+      reservation.isCancelled && trip.isOpen && service != null;
+
+  /// فقط اگر سفر تمام شده، دانشجو واقعاً سوار شده و هنوز امتیاز نداده است.
   bool get canRate =>
-      trip.status == TripStatus.completed && reservation.isActive;
+      trip.status == TripStatus.completed &&
+      reservation.isActive &&
+      boarded &&
+      !rated;
 }
 
 /// رزروهای من؛ بین «خانه» و «رزروها» مشترک است تا هر صفحه دوباره از سرور نخواند.
@@ -114,6 +134,8 @@ class MyTripsStore extends ChangeNotifier with SafeNotifier {
           if (trip != null) trip.id: trip,
       };
 
+      final boarded = await _idsOrEmpty(_reservations.boardedTripIds);
+      final rated = await _idsOrEmpty(_reservations.ratedTripIds);
       final services = await _servicesOrEmpty();
       _stations = await _stationsOrKeep();
 
@@ -124,6 +146,8 @@ class MyTripsStore extends ChangeNotifier with SafeNotifier {
               reservation: r,
               trip: trip,
               service: services[trip.serviceId],
+              boarded: boarded.contains(trip.id),
+              rated: rated.contains(trip.id),
             ),
       ];
       _status = LoadStatus.ready;
@@ -147,6 +171,14 @@ class MyTripsStore extends ChangeNotifier with SafeNotifier {
       return await _trips.byId(id);
     } on ApiException {
       return null;
+    }
+  }
+
+  Future<Set<int>> _idsOrEmpty(Future<Set<int>> Function() load) async {
+    try {
+      return await load();
+    } on ApiException {
+      return const {};
     }
   }
 

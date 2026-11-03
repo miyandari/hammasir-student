@@ -123,7 +123,8 @@ void main() {
       expect(serviceAllowsGender('mixed', 'male'), isTrue);
       expect(serviceAllowsGender('female', 'male'), isFalse);
       expect(serviceAllowsGender('female', 'female'), isTrue);
-      expect(serviceAllowsGender('female', null), isTrue);
+      expect(serviceAllowsGender('female', null), isFalse);
+      expect(serviceAllowsGender('mixed', null), isTrue);
     });
   });
 }

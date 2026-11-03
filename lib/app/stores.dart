@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 
 import 'package:hammasir_student/app/deps.dart';
+import 'package:hammasir_student/state/activity_store.dart';
+import 'package:hammasir_student/state/avatar_controller.dart';
 import 'package:hammasir_student/state/my_trips_store.dart';
 import 'package:hammasir_student/state/session_controller.dart';
 import 'package:hammasir_student/state/notifications_store.dart';
@@ -14,15 +16,21 @@ class Stores {
           trips: deps.trips,
           catalog: deps.catalog,
         ),
-        notifications = NotificationsStore(deps.notifications);
+        notifications = NotificationsStore(deps.notifications),
+        avatar = AvatarController(deps.settings),
+        activity = ActivityStore(deps.settings);
 
   final SessionController session;
   final MyTripsStore myTrips;
   final NotificationsStore notifications;
+  final AvatarController avatar;
+  final ActivityStore activity;
 
   void dispose() {
     myTrips.dispose();
     notifications.dispose();
+    avatar.dispose();
+    activity.dispose();
   }
 }
 

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
 import 'package:hammasir_student/app/deps.dart';
+import 'package:hammasir_student/app/stores.dart';
+import 'package:hammasir_student/state/activity_store.dart';
 import 'package:hammasir_student/core/network/api_exception.dart';
 import 'package:hammasir_student/core/widgets/soft_banner.dart';
 import 'package:hammasir_student/core/widgets/status_chip.dart';
 import 'package:hammasir_student/features/shared/ui_helpers.dart';
+import 'package:hammasir_student/l10n/l10n.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -43,8 +46,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     try {
       await deps.auth.changePassword(current: _current.text, next: _next.text);
       if (!mounted) return;
+      StoresScope.read(context).activity.record(ActivityType.password);
       Navigator.of(context).pop();
-      showMessage(context, 'رمز عبور تغییر کرد');
+      showMessage(context, context.t('pw.changed'), tone: Tone.success);
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -75,7 +79,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('تغییر رمز عبور')),
+      appBar: AppBar(title: Text(context.t('pw.title'))),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -83,20 +87,22 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           children: [
             _field(
               _current,
-              'رمز فعلی',
-              (v) => (v == null || v.isEmpty) ? 'رمز فعلی را وارد کنید' : null,
+              context.t('pw.current'),
+              (v) => (v == null || v.isEmpty)
+                  ? context.t('pw.current_required')
+                  : null,
             ),
             _field(
               _next,
-              'رمز جدید (حداقل ۸ نویسه)',
+              context.t('pw.new'),
               (v) => (v == null || v.length < 8)
-                  ? 'رمز جدید باید حداقل ۸ نویسه باشد'
+                  ? context.t('pw.new_short')
                   : null,
             ),
             _field(
               _repeat,
-              'تکرار رمز جدید',
-              (v) => v != _next.text ? 'تکرار رمز با رمز جدید یکی نیست' : null,
+              context.t('pw.repeat'),
+              (v) => v != _next.text ? context.t('pw.mismatch') : null,
             ),
             if (_error != null) ...[
               SoftBanner(
@@ -114,7 +120,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       height: 22,
                       child: CircularProgressIndicator(strokeWidth: 2.5),
                     )
-                  : const Text('ذخیره'),
+                  : Text(context.t('common.save')),
             ),
           ],
         ),

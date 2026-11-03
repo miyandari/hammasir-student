@@ -6,6 +6,7 @@ import 'package:hammasir_student/features/home/home_screen.dart';
 import 'package:hammasir_student/features/notifications/notifications_screen.dart';
 import 'package:hammasir_student/features/profile/profile_screen.dart';
 import 'package:hammasir_student/features/reservations/reservations_screen.dart';
+import 'package:hammasir_student/l10n/l10n.dart';
 import 'package:hammasir_student/state/session_controller.dart';
 
 /// قاب اصلی با چهار تب پایین.
@@ -72,15 +73,15 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
             selectedIndex: _index,
             onDestinationSelected: (value) => setState(() => _index = value),
             destinations: [
-              const NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home_rounded),
-                label: 'خانه',
+              NavigationDestination(
+                icon: const Icon(Icons.home_outlined),
+                selectedIcon: const Icon(Icons.home_rounded),
+                label: context.t('nav.home'),
               ),
-              const NavigationDestination(
-                icon: Icon(Icons.confirmation_number_outlined),
-                selectedIcon: Icon(Icons.confirmation_number),
-                label: 'رزروها',
+              NavigationDestination(
+                icon: const Icon(Icons.event_note_outlined),
+                selectedIcon: const Icon(Icons.event_note),
+                label: context.t('nav.reservations'),
               ),
               NavigationDestination(
                 icon: Badge(
@@ -93,12 +94,12 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
                   label: Text(Fa.digits(unread)),
                   child: const Icon(Icons.notifications),
                 ),
-                label: 'اعلان‌ها',
+                label: context.t('nav.notifications'),
               ),
-              const NavigationDestination(
-                icon: Icon(Icons.person_outline),
-                selectedIcon: Icon(Icons.person),
-                label: 'من',
+              NavigationDestination(
+                icon: const Icon(Icons.person_outline),
+                selectedIcon: const Icon(Icons.person),
+                label: context.t('nav.account'),
               ),
             ],
           );

@@ -9,6 +9,7 @@ import 'package:hammasir_student/core/widgets/state_views.dart';
 import 'package:hammasir_student/data/models/notification_item.dart';
 import 'package:hammasir_student/features/shared/page_header.dart';
 import 'package:hammasir_student/features/trip/trip_screen.dart';
+import 'package:hammasir_student/l10n/l10n.dart';
 import 'package:hammasir_student/state/notifications_store.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -47,11 +48,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Column(
           children: [
             PageHeader(
-              title: 'اعلان‌ها',
+              title: context.t('notif.title'),
               trailing: _store.unread > 0
                   ? TextButton(
                       onPressed: _store.markAllRead,
-                      child: const Text('خواندن همه'),
+                      child: Text(context.t('notif.mark_all')),
                     )
                   : null,
             ),
@@ -69,7 +70,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     if (_store.status == LoadStatus.error && _store.items.isEmpty) {
       return ErrorState(
-        message: _store.error ?? 'خطا در دریافت اعلان‌ها',
+        message: _store.error ?? context.t('notif.load_failed'),
         onRetry: _store.load,
       );
     }
@@ -77,9 +78,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return RefreshIndicator(
       onRefresh: _store.load,
       child: _store.items.isEmpty
-          ? const EmptyState(
+          ? EmptyState(
               icon: Icons.notifications_none,
-              message: 'اعلانی ندارید.',
+              message: context.t('notif.empty'),
             )
           : ListView.separated(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -95,6 +96,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 }
 
+IconData _iconFor(String type) {
+  if (type.contains('arrival')) return Icons.directions_bus_rounded;
+  if (type.contains('penalty') || type.contains('block')) {
+    return Icons.warning_amber_rounded;
+  }
+  if (type.contains('boarding')) return Icons.how_to_reg_rounded;
+  if (type.contains('reservation') || type.contains('waitlist')) {
+    return Icons.event_available_rounded;
+  }
+  return Icons.notifications_rounded;
+}
+
 class _NotificationTile extends StatelessWidget {
   const _NotificationTile({required this.item, required this.onTap});
 
@@ -103,6 +116,7 @@ class _NotificationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Localizations.localeOf(context); // با تغییر زبان، زمان نسبی دوباره ساخته شود
     final p = context.palette;
 
     return AppCard(
@@ -112,14 +126,16 @@ class _NotificationTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 6, left: 10),
-            child: Icon(
-              Icons.circle,
-              size: 10,
-              color: item.isRead ? Colors.transparent : p.brand,
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: item.isRead ? p.brandSoft : p.surface,
+              shape: BoxShape.circle,
             ),
+            child: Icon(_iconFor(item.type), size: 22, color: p.brand),
           ),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,6 +160,11 @@ class _NotificationTile extends StatelessWidget {
               ],
             ),
           ),
+          if (!item.isRead)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Icon(Icons.circle, size: 10, color: p.brand),
+            ),
         ],
       ),
     );

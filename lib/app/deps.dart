@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import 'package:hammasir_student/core/network/api_client.dart';
+import 'package:hammasir_student/core/security/biometric_service.dart';
 import 'package:hammasir_student/core/storage/settings_store.dart';
 import 'package:hammasir_student/core/storage/token_store.dart';
 import 'package:hammasir_student/data/repositories/auth_repository.dart';
@@ -8,15 +9,21 @@ import 'package:hammasir_student/data/repositories/catalog_repository.dart';
 import 'package:hammasir_student/data/repositories/feedback_repository.dart';
 import 'package:hammasir_student/data/repositories/notification_repository.dart';
 import 'package:hammasir_student/data/repositories/reservation_repository.dart';
+import 'package:hammasir_student/data/repositories/routing_repository.dart';
 import 'package:hammasir_student/data/repositories/student_repository.dart';
 import 'package:hammasir_student/data/repositories/tracking_repository.dart';
 import 'package:hammasir_student/data/repositories/trip_repository.dart';
 
 /// همه‌ی وابستگی‌های شبکه/داده؛ یک بار ساخته می‌شود و با InheritedWidget در دسترس است.
 class Deps {
-  Deps({TokenStore? tokens, ApiClient? api, SettingsStore? settings})
-      : tokens = tokens ?? SecureTokenStore(),
-        settings = settings ?? SettingsStore() {
+  Deps({
+    TokenStore? tokens,
+    ApiClient? api,
+    SettingsStore? settings,
+    BiometricService? biometric,
+  })  : tokens = tokens ?? SecureTokenStore(),
+        settings = settings ?? SettingsStore(),
+        biometric = biometric ?? BiometricService() {
     this.api = api ?? ApiClient(tokens: this.tokens);
     auth = AuthRepository(api: this.api, tokens: this.tokens);
     students = StudentRepository(this.api);
@@ -26,10 +33,12 @@ class Deps {
     notifications = NotificationRepository(this.api);
     feedback = FeedbackRepository(this.api);
     tracking = TrackingRepository(this.tokens);
+    routing = RoutingRepository();
   }
 
   final TokenStore tokens;
   final SettingsStore settings;
+  final BiometricService biometric;
   late final ApiClient api;
   late final AuthRepository auth;
   late final StudentRepository students;
@@ -39,8 +48,12 @@ class Deps {
   late final NotificationRepository notifications;
   late final FeedbackRepository feedback;
   late final TrackingRepository tracking;
+  late final RoutingRepository routing;
 
-  void dispose() => api.close();
+  void dispose() {
+    api.close();
+    routing.close();
+  }
 }
 
 class DepsScope extends InheritedWidget {

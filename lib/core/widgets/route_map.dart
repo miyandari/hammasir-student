@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import 'package:hammasir_student/core/config/app_config.dart';
+import 'package:hammasir_student/core/widgets/osm_map_view.dart';
 import 'package:hammasir_student/core/theme/app_palette.dart';
 
 /// یک ایستگاه روی نقشه.
@@ -20,11 +21,15 @@ class RouteMap extends StatelessWidget {
   const RouteMap({
     super.key,
     required this.stops,
+    this.path,
     this.vehicle,
     this.interactive = true,
   });
 
   final List<MapStop> stops;
+
+  /// مسیر واقعی خیابان‌ها؛ اگر null باشد ایستگاه‌ها با خط مستقیم وصل می‌شوند.
+  final List<LatLng>? path;
   final LatLng? vehicle;
   final bool interactive;
 
@@ -32,21 +37,22 @@ class RouteMap extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
 
-    final route = [for (final stop in stops) stop.point];
-    final all = [...route, if (vehicle != null) vehicle!];
+    final route = path ?? [for (final stop in stops) stop.point];
+    final all = <LatLng>[
+      for (final stop in stops) stop.point,
+      ...?path,
+      if (vehicle != null) vehicle!,
+    ];
 
     if (all.isEmpty) {
-      return Container(
-        color: p.brandSoft,
-        alignment: Alignment.center,
-        child: Icon(Icons.map_outlined, size: 56, color: p.brand),
-      );
+      all.add(const LatLng(AppConfig.defaultLat, AppConfig.defaultLng));
     }
 
     final canFit = _hasSpread(all);
 
-    return FlutterMap(
-      key: ValueKey('${stops.length}-${vehicle == null}'),
+    return OsmMapView(
+      showLocate: interactive,
+      key: ValueKey('${stops.length}-${path?.length}-${vehicle == null}'),
       options: MapOptions(
         initialCenter: all.first,
         initialZoom: 15,
@@ -62,11 +68,7 @@ class RouteMap extends StatelessWidget {
               : InteractiveFlag.none,
         ),
       ),
-      children: [
-        TileLayer(
-          urlTemplate: AppConfig.tileUrl,
-          userAgentPackageName: AppConfig.userAgentPackage,
-        ),
+      layers: [
         if (route.length >= 2)
           PolylineLayer(
             polylines: [

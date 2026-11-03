@@ -4,6 +4,15 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+<key>NSCameraUsageDescription</key>
+<string>برای اسکن QR ایستگاه به دوربین نیاز است.</string>
+<key>NSFaceIDUsageDescription</key>
+<string>برای ورود سریع با اثر انگشت یا چهره.</string>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>برای انتخاب عکس پروفایل.</string>
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>برای نمایش موقعیت شما روی نقشه.</string>
+
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

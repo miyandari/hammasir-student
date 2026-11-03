@@ -1,20 +1,34 @@
-# وصله‌ی بک‌اند (اختیاری ولی توصیه‌شده)
+# پچ بک‌اند: اعلان برای رزرو و لغو
 
-۱. فایل `backend/app/api/student_self.py` را در پروژه‌ی بک‌اند به `app/api/student_self.py` کپی کنید.
-
-۲. در `app/main.py` دو خط اضافه کنید. **مهم:** include آن باید **قبل از** `students_router` باشد
-(وگرنه `/students/me` را مسیر `/students/{student_id}` می‌بلعد):
+اعلان‌ها خالی بودند چون بک‌اند هنگام رزرو/لغو هیچ اعلانی نمی‌سازد.
+در `app/services/reservation_service.py`:
 
 ```python
-from app.api.student_self import router as student_self_router
-...
-app.include_router(student_self_router)   # قبل از students_router
-app.include_router(students_router)
+from app.services.notification_service import create_notification_for_student
 ```
 
-۳. سرور را دوباره اجرا کنید. مسیرهای جدید (همه فقط خواندنی):
-- `GET /students/me` — وضعیت دانشجو (تخلف، مسدودی، جنسیت)
-- `GET /students/me/qr` — توکن QR
-- `GET /trips/{trip_id}/availability` — ظرفیت باقی‌مانده
+داخل `create_reservation` بعد از `db.refresh(reservation)`:
 
-این مسیرها فقط با import و openapi بررسی شده‌اند، نه با دیتابیس واقعی؛ لطفاً در `/docs` امتحان کنید.
+```python
+create_notification_for_student(
+    db, student_id=student.id, notification_type="reservation",
+    title="رزرو ثبت شد" if reservation.status == "active" else "در لیست انتظار",
+    message="رزرو شما ثبت شد." if reservation.status == "active"
+            else "شما در لیست انتظار قرار گرفتید.",
+    data={"trip_id": trip.id, "reservation_id": reservation.id},
+)
+db.commit()
+```
+
+داخل `cancel_reservation` قبل از `db.commit()`:
+
+```python
+create_notification_for_student(
+    db, student_id=reservation.student_id, notification_type="reservation",
+    title="رزرو لغو شد", message="رزرو شما لغو شد.",
+    data={"trip_id": trip.id, "reservation_id": reservation.id},
+)
+```
+
+(تابع فقط flush می‌کند؛ commit بعدش لازم است.) مقدار `notification_type` را با enum/قیدهای مدل Notification چک کنید.
+نیاز به `backend/app/api/student_self.py` از زیپ قبلی هم باقی است (جنسیت از `/students/me`).

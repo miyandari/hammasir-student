@@ -29,6 +29,14 @@ dependencies:
   qr_flutter: ^4.1.0
   mobile_scanner: ^6.0.2
 
+  # اثر انگشت، عکس پروفایل
+  local_auth: ^2.3.0
+  image_picker: ^1.1.2
+  path_provider: ^2.1.4
+
+  # موقعیت کاربر روی نقشه
+  geolocator: ^13.0.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:hammasir_student/state/activity_store.dart';
+
 import 'package:hammasir_student/app/deps.dart';
 import 'package:hammasir_student/app/stores.dart';
 import 'package:hammasir_student/core/network/api_exception.dart';
@@ -14,10 +16,12 @@ import 'package:hammasir_student/core/widgets/status_chip.dart';
 import 'package:hammasir_student/data/models/trip.dart';
 import 'package:hammasir_student/features/qr/my_qr_screen.dart';
 import 'package:hammasir_student/features/rating/rate_trip_screen.dart';
+import 'package:hammasir_student/features/reserve/reserve_screen.dart';
 import 'package:hammasir_student/features/shared/page_header.dart';
 import 'package:hammasir_student/features/shared/status_labels.dart';
 import 'package:hammasir_student/features/shared/ui_helpers.dart';
 import 'package:hammasir_student/features/trip/trip_controller.dart';
+import 'package:hammasir_student/l10n/l10n.dart';
 import 'package:hammasir_student/state/my_trips_store.dart';
 
 class TripScreen extends StatefulWidget {
@@ -43,6 +47,7 @@ class _TripScreenState extends State<TripScreen> {
       trips: deps.trips,
       catalog: deps.catalog,
       tracking: deps.tracking,
+      routing: deps.routing,
     )..start();
   }
 
@@ -55,18 +60,24 @@ class _TripScreenState extends State<TripScreen> {
   Future<void> _cancel(Booking booking) async {
     final ok = await confirm(
       context,
-      title: 'لغو رزرو',
-      message: 'رزرو این سفر لغو شود؟',
-      confirmLabel: 'لغو رزرو',
-      cancelLabel: 'نگه دار',
+      icon: Icons.event_busy_rounded,
+      title: context.t('trip.cancel_title'),
+      message: context.t('trip.cancel_message'),
+      confirmLabel: context.t('trip.cancel_confirm'),
+      cancelLabel: context.t('trip.cancel_keep'),
+      tone: Tone.danger,
+      destructive: true,
     );
     if (!ok || !mounted) return;
 
     try {
       await _stores.myTrips.cancel(booking.reservation.id);
-      if (mounted) showMessage(context, 'رزرو لغو شد');
+      _stores.activity.record(ActivityType.cancel, detail: _controller.title);
+      if (mounted) {
+        showMessage(context, context.t('trip.cancelled_done'), tone: Tone.success);
+      }
     } on ApiException catch (e) {
-      if (mounted) showMessage(context, e.message);
+      if (mounted) showMessage(context, e.message, tone: Tone.danger);
     }
   }
 
@@ -78,11 +89,13 @@ class _TripScreenState extends State<TripScreen> {
         final c = _controller;
 
         return Scaffold(
-          appBar: AppBar(title: Text(c.service?.name ?? 'جزئیات سفر')),
+          appBar: AppBar(
+            title: Text(c.title ?? context.t('trip.details')),
+          ),
           body: switch (c.status) {
             LoadStatus.idle || LoadStatus.loading => const CenteredLoader(),
             LoadStatus.error => ErrorState(
-                message: c.error ?? 'خطا در دریافت سفر',
+                message: c.error ?? context.t('trip.load_failed'),
                 onRetry: c.start,
               ),
             LoadStatus.ready => _content(context, c),
@@ -107,7 +120,11 @@ class _TripScreenState extends State<TripScreen> {
       children: [
         Expanded(
           flex: 5,
-          child: RouteMap(stops: mapStops, vehicle: trip.isLive ? c.vehicle : null),
+          child: RouteMap(
+            stops: mapStops,
+            path: c.path,
+            vehicle: trip.isLive ? c.vehicle : null,
+          ),
         ),
         Expanded(
           flex: 6,
@@ -119,8 +136,8 @@ class _TripScreenState extends State<TripScreen> {
                 _Summary(trip: trip, booking: booking),
                 if (c.stale) ...[
                   const SizedBox(height: 10),
-                  const SoftBanner(
-                    message: 'به‌روزرسانی زنده قطع است؛ آخرین اطلاعات نمایش داده می‌شود.',
+                  SoftBanner(
+                    message: context.t('trip.live_lost'),
                     icon: Icons.cloud_off_outlined,
                   ),
                 ],
@@ -129,11 +146,11 @@ class _TripScreenState extends State<TripScreen> {
                   _LivePanel(controller: c, myStationId: myStationId),
                 ],
                 if (c.stops.isNotEmpty) ...[
-                  const SectionTitle('ایستگاه‌ها'),
+                  SectionTitle(context.t('trip.stations')),
                   _StopList(controller: c, myStationId: myStationId),
                 ],
                 const SizedBox(height: 16),
-                ..._actions(context, trip, booking),
+                ..._actions(context, c, trip, booking),
               ],
             ),
           ),
@@ -142,8 +159,17 @@ class _TripScreenState extends State<TripScreen> {
     );
   }
 
-  List<Widget> _actions(BuildContext context, Trip trip, Booking? booking) {
+  List<Widget> _actions(
+    BuildContext context,
+    TripController c,
+    Trip trip,
+    Booking? booking,
+  ) {
     final widgets = <Widget>[];
+
+    void gap() {
+      if (widgets.isNotEmpty) widgets.add(const SizedBox(height: 10));
+    }
 
     if (trip.isLive && booking != null) {
       widgets.add(
@@ -152,22 +178,40 @@ class _TripScreenState extends State<TripScreen> {
             MaterialPageRoute<void>(builder: (_) => const MyQrScreen()),
           ),
           icon: const Icon(Icons.qr_code_2_rounded),
-          label: const Text('نمایش کد QR من'),
+          label: Text(context.t('trip.show_qr')),
+        ),
+      );
+    }
+
+    // رزرو مجدد: سفر هنوز باز است و رزرو فعالی ندارید (مثلاً لغو کرده‌اید).
+    final service = c.service;
+    if (booking == null && trip.isOpen && service != null) {
+      gap();
+      widgets.add(
+        FilledButton.icon(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => ReserveScreen(trip: trip, service: service),
+            ),
+          ),
+          icon: const Icon(Icons.event_available_rounded),
+          label: Text(context.t('trip.reserve_this')),
         ),
       );
     }
 
     if (booking != null && trip.isOpen && booking.reservation.isLiveBooking) {
-      widgets.add(const SizedBox(height: 10));
+      gap();
       widgets.add(
         OutlinedButton(
           onPressed: () => _cancel(booking),
-          child: const Text('لغو رزرو'),
+          child: Text(context.t('trip.cancel_reservation')),
         ),
       );
     }
 
     if (booking != null && booking.canRate) {
+      gap();
       widgets.add(
         FilledButton.icon(
           onPressed: () => Navigator.of(context).push(
@@ -176,7 +220,7 @@ class _TripScreenState extends State<TripScreen> {
             ),
           ),
           icon: const Icon(Icons.star_rounded),
-          label: const Text('امتیاز به این سفر'),
+          label: Text(context.t('trip.rate')),
         ),
       );
     }
@@ -195,6 +239,9 @@ class _Summary extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     final tripLabel = StatusLabel.trip(trip.status);
+    final reservation = booking == null
+        ? null
+        : StatusLabel.reservation(booking!.reservation.status);
 
     return Row(
       children: [
@@ -210,12 +257,12 @@ class _Summary extends StatelessWidget {
                   color: p.text,
                 ),
               ),
-              if (booking != null)
+              if (reservation != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: StatusChip(
-                    label: StatusLabel.reservation(booking!.reservation.status).text,
-                    tone: StatusLabel.reservation(booking!.reservation.status).tone,
+                    label: reservation.text,
+                    tone: reservation.tone,
                   ),
                 ),
             ],
@@ -239,8 +286,8 @@ class _LivePanel extends StatelessWidget {
     final eta = controller.eta;
 
     if (eta == null || eta.gpsOffline) {
-      return const SoftBanner(
-        message: 'موقعیت خودرو هنوز دریافت نشده است.',
+      return SoftBanner(
+        message: context.t('trip.no_gps'),
         icon: Icons.gps_off,
       );
     }
@@ -255,7 +302,10 @@ class _LivePanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (mine != null) ...[
-            Text('تا ایستگاه شما', style: TextStyle(color: p.textMuted)),
+            Text(
+              context.t('trip.until_your_station'),
+              style: TextStyle(color: p.textMuted),
+            ),
             const SizedBox(height: 2),
             Text(
               Fa.duration(mine),
@@ -270,13 +320,18 @@ class _LivePanel extends StatelessWidget {
           if (next != null)
             Text(
               next.etaSeconds == null
-                  ? 'ایستگاه بعدی: ${next.name}'
-                  : 'ایستگاه بعدی: ${next.name} (${Fa.duration(next.etaSeconds!)})',
+                  ? context.t('trip.next_station', {'name': next.name})
+                  : context.t('trip.next_station_eta', {
+                      'name': next.name,
+                      'eta': Fa.duration(next.etaSeconds!),
+                    }),
               style: TextStyle(color: p.text),
             )
           else
-            Text('خودرو به آخرین ایستگاه رسیده است.',
-                style: TextStyle(color: p.text)),
+            Text(
+              context.t('trip.at_last_station'),
+              style: TextStyle(color: p.text),
+            ),
         ],
       ),
     );
@@ -323,7 +378,10 @@ class _StopList extends StatelessWidget {
                     ),
                   ),
                   if (info.station.id == myStationId)
-                    const StatusChip(label: 'ایستگاه شما', tone: Tone.warning),
+                    StatusChip(
+                      label: context.t('trip.your_station'),
+                      tone: Tone.warning,
+                    ),
                 ],
               ),
             ),

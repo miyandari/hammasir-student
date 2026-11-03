@@ -7,10 +7,12 @@ import 'package:hammasir_student/core/theme/app_palette.dart';
 import 'package:hammasir_student/core/utils/persian.dart';
 import 'package:hammasir_student/core/widgets/app_card.dart';
 import 'package:hammasir_student/core/widgets/state_views.dart';
+import 'package:hammasir_student/core/widgets/status_chip.dart';
 import 'package:hammasir_student/data/models/service_info.dart';
 import 'package:hammasir_student/data/models/trip.dart';
 import 'package:hammasir_student/features/shared/page_header.dart';
 import 'package:hammasir_student/features/shared/ui_helpers.dart';
+import 'package:hammasir_student/l10n/l10n.dart';
 
 /// استخراج شناسه‌ی ایستگاه از متن QR: «station:12» یا فقط «12».
 int? parseStationCode(String raw) {
@@ -72,7 +74,7 @@ class _ScanStationScreenState extends State<ScanStationScreen> {
   void _submitManual() {
     final id = parseStationCode(_manual.text);
     if (id == null) {
-      setState(() => _error = 'کد ایستگاه معتبر نیست');
+      setState(() => _error = L10n.t('scan.invalid'));
       return;
     }
     FocusScope.of(context).unfocus();
@@ -138,7 +140,7 @@ class _ScanStationScreenState extends State<ScanStationScreen> {
       );
       if (!mounted) return;
       Navigator.of(context).pop();
-      showMessage(context, 'درخواست شما برای تأیید راننده ارسال شد');
+      showMessage(context, context.t('scan.sent'), tone: Tone.success);
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -160,7 +162,7 @@ class _ScanStationScreenState extends State<ScanStationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('اسکن QR ایستگاه')),
+      appBar: AppBar(title: Text(context.t('scan.title'))),
       body: _stationId == null ? _scanView(context) : _pickView(context),
     );
   }
@@ -181,7 +183,7 @@ class _ScanStationScreenState extends State<ScanStationScreen> {
           child: Column(
             children: [
               Text(
-                'QR روی تابلوی ایستگاه را اسکن کنید، یا کد ایستگاه را بنویسید.',
+                context.t('scan.hint'),
                 textAlign: TextAlign.center,
                 style: TextStyle(color: p.textMuted),
               ),
@@ -194,7 +196,7 @@ class _ScanStationScreenState extends State<ScanStationScreen> {
                       keyboardType: TextInputType.number,
                       textDirection: TextDirection.ltr,
                       decoration: InputDecoration(
-                        hintText: 'کد ایستگاه',
+                        hintText: context.t('scan.code_hint'),
                         errorText: _error,
                       ),
                       onSubmitted: (_) => _submitManual(),
@@ -206,7 +208,7 @@ class _ScanStationScreenState extends State<ScanStationScreen> {
                     style: FilledButton.styleFrom(
                       minimumSize: const Size(72, 54),
                     ),
-                    child: const Text('ادامه'),
+                    child: Text(context.t('common.continue')),
                   ),
                 ],
               ),
@@ -225,7 +227,7 @@ class _ScanStationScreenState extends State<ScanStationScreen> {
 
     if (trips == null) {
       return ErrorState(
-        message: _error ?? 'خطا در دریافت سفرها',
+        message: _error ?? context.t('home.load_failed'),
         onRetry: _loadLiveTrips,
       );
     }
@@ -234,15 +236,15 @@ class _ScanStationScreenState extends State<ScanStationScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         Text(
-          'ایستگاه شماره ${Fa.digits(_stationId)} انتخاب شد. سفر را انتخاب کنید:',
+          context.t('scan.station_selected', {'n': Fa.digits(_stationId)}),
           style: TextStyle(color: p.text, height: 1.7),
         ),
-        const SectionTitle('سفرهای در حال انجام'),
+        SectionTitle(context.t('scan.live_trips')),
         if (trips.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
             child: Text(
-              'الان سفر فعالی وجود ندارد.',
+              context.t('scan.no_live'),
               textAlign: TextAlign.center,
               style: TextStyle(color: p.textMuted),
             ),
@@ -273,7 +275,7 @@ class _ScanStationScreenState extends State<ScanStationScreen> {
                         ],
                       ),
                     ),
-                    const Icon(Icons.chevron_left),
+                    const Icon(Icons.chevron_right),
                   ],
                 ),
               ),
@@ -284,7 +286,7 @@ class _ScanStationScreenState extends State<ScanStationScreen> {
             child: Text(_error!, style: TextStyle(color: p.danger)),
           ),
         const SizedBox(height: 8),
-        TextButton(onPressed: _reset, child: const Text('اسکن دوباره')),
+        TextButton(onPressed: _reset, child: Text(context.t('scan.again'))),
       ],
     );
   }
