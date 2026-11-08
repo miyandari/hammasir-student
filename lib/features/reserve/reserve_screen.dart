@@ -123,11 +123,7 @@ class _ReserveScreenState extends State<ReserveScreen> {
                               height: 22,
                               child: CircularProgressIndicator(strokeWidth: 2.5),
                             )
-                          : Text(
-                              c.willBeWaitlisted
-                                  ? context.t('reserve.submit_waitlist')
-                                  : context.t('reserve.submit'),
-                            ),
+                          : Text(context.t('reserve.submit')),
                     ),
                   ),
                 )
@@ -170,7 +166,7 @@ class _ReserveScreenState extends State<ReserveScreen> {
                 const SizedBox(height: 8),
                 StatusChip(label: gender.text, tone: gender.tone),
               ],
-              if (a != null) ...[
+              if (a != null && !a.capacityUnknown) ...[
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -182,20 +178,6 @@ class _ReserveScreenState extends State<ReserveScreen> {
                       }),
                       tone: a.hasSeat ? Tone.success : Tone.danger,
                     ),
-                    if (a.allowStanding)
-                      StatusChip(
-                        label: context.t('reserve.standing_free', {
-                          'n': Fa.digits(a.standingAvailable),
-                        }),
-                        tone: a.hasStanding ? Tone.brand : Tone.neutral,
-                      ),
-                    if (a.waitlistCount > 0)
-                      StatusChip(
-                        label: context.t('reserve.waitlist_count', {
-                          'n': Fa.digits(a.waitlistCount),
-                        }),
-                        tone: Tone.warning,
-                      ),
                   ],
                 ),
               ],
@@ -250,25 +232,11 @@ class _ReserveScreenState extends State<ReserveScreen> {
                 onTap: () => c.selectStation(info.station.id),
               ),
             ),
-        SectionTitle(context.t('reserve.seat_type')),
-        ChoiceTile(
-          title: context.t('reserve.seated'),
-          selected: !c.standing,
-          onTap: () => c.selectStanding(false),
-        ),
-        if (c.canChooseStanding) ...[
-          const SizedBox(height: 8),
-          ChoiceTile(
-            title: context.t('reserve.standing'),
-            selected: c.standing,
-            onTap: () => c.selectStanding(true),
-          ),
-        ],
-        if (c.willBeWaitlisted) ...[
+        if (c.isFull) ...[
           const SizedBox(height: 12),
           SoftBanner(
-            message: context.t('reserve.waitlist_notice'),
-            icon: Icons.hourglass_bottom,
+            message: context.t('reserve.full_notice'),
+            icon: Icons.event_seat_outlined,
           ),
         ],
         if (c.error != null) ...[

@@ -21,6 +21,7 @@ class Trip {
     required this.allowStanding,
     this.seatedCapacity,
     this.standingCapacity,
+    this.driverId,
     this.actualDeparture,
     this.actualArrival,
   });
@@ -33,6 +34,9 @@ class Trip {
   final bool allowStanding;
   final int? seatedCapacity;
   final int? standingCapacity;
+
+  /// بدون راننده نمی‌توان رزرو کرد.
+  final int? driverId;
   final DateTime? actualDeparture;
   final DateTime? actualArrival;
 
@@ -60,6 +64,7 @@ class Trip {
       allowStanding: asBool(json['allow_standing']),
       seatedCapacity: asInt(json['seated_capacity']),
       standingCapacity: asInt(json['standing_capacity']),
+      driverId: asInt(json['driver_id']),
       actualDeparture: asDate(json['actual_departure_time']),
       actualArrival: asDate(json['actual_arrival_time']),
     );

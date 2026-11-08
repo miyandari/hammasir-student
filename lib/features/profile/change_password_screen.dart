@@ -10,7 +10,11 @@ import 'package:hammasir_student/features/shared/ui_helpers.dart';
 import 'package:hammasir_student/l10n/l10n.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
-  const ChangePasswordScreen({super.key});
+  const ChangePasswordScreen({super.key, this.forced = false, this.onChanged});
+
+  /// رمز اولیه/بازنشانی‌شده: تا تغییر رمز نمی‌توان برگشت.
+  final bool forced;
+  final VoidCallback? onChanged;
 
   @override
   State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
@@ -47,8 +51,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       await deps.auth.changePassword(current: _current.text, next: _next.text);
       if (!mounted) return;
       StoresScope.read(context).activity.record(ActivityType.password);
+      widget.onChanged?.call();
+      final messenger = context;
       Navigator.of(context).pop();
-      showMessage(context, context.t('pw.changed'), tone: Tone.success);
+      showMessage(messenger, context.t('pw.changed'), tone: Tone.success);
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -78,13 +84,25 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(context.t('pw.title'))),
+    return PopScope(
+      canPop: !widget.forced,
+      child: Scaffold(
+      appBar: AppBar(
+        title: Text(context.t('pw.title')),
+        automaticallyImplyLeading: !widget.forced,
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (widget.forced) ...[
+              SoftBanner(
+                message: context.t('pw.forced_notice'),
+                icon: Icons.lock_reset,
+              ),
+              const SizedBox(height: 14),
+            ],
             _field(
               _current,
               context.t('pw.current'),
@@ -124,6 +142,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

@@ -10,6 +10,7 @@ class UserProfile {
     this.lastName,
     this.studentId,
     this.universityId,
+    this.mustChangePassword = false,
   });
 
   final int id;
@@ -19,6 +20,17 @@ class UserProfile {
   final String? lastName;
   final int? studentId;
   final int? universityId;
+  final bool mustChangePassword;
+
+  UserProfile withPasswordChanged() => UserProfile(
+        id: id,
+        username: username,
+        role: role,
+        firstName: firstName,
+        lastName: lastName,
+        studentId: studentId,
+        universityId: universityId,
+      );
 
   bool get isStudent => role == 'student';
 
@@ -39,6 +51,7 @@ class UserProfile {
       lastName: asNullableString(json['last_name']),
       studentId: asInt(json['student_id']),
       universityId: asInt(json['university_id']),
+      mustChangePassword: asBool(json['must_change_password']),
     );
   }
 }

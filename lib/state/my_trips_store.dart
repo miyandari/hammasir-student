@@ -35,7 +35,14 @@ class Booking {
   String get title => service?.name ?? L10n.t('common.service');
 
   /// سفر هنوز تمام نشده و رزرو فعال/در انتظار است.
-  bool get isUpcoming => reservation.isLiveBooking && !trip.isFinished;
+  bool get isUpcoming =>
+      reservation.isLiveBooking && !trip.isFinished && !_isStale;
+
+  /// سفری که ساعتش خیلی گذشته ولی هیچ‌وقت بسته نشده (راننده شروع/پایان نزده).
+  bool get _isStale {
+    final age = DateTime.now().difference(trip.plannedDeparture);
+    return age > (trip.isLive ? const Duration(hours: 12) : const Duration(hours: 3));
+  }
 
   /// رزرو لغو شده ولی سفر هنوز باز است؛ می‌توان دوباره رزرو کرد.
   bool get canRebook =>

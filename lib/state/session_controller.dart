@@ -150,6 +150,14 @@ class SessionController extends ChangeNotifier with SafeNotifier {
     await refreshStudent();
   }
 
+  /// پس از تغییر رمز اجباری، پرچم محلی پاک می‌شود.
+  void markPasswordChanged() {
+    final current = _profile;
+    if (current == null) return;
+    _profile = current.withPasswordChanged();
+    notifyListeners();
+  }
+
   Future<void> refreshStudent() async {
     try {
       _student = await _students.profile(fallbackStudentId: studentId);

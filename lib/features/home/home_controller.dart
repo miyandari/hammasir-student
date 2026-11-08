@@ -85,6 +85,8 @@ class HomeController extends ChangeNotifier with SafeNotifier {
       for (var i = 0; i < daysAhead; i++) {
         for (final trip in results[i] as List<Trip>) {
           if (trip.isFinished || !seen.add(trip.id)) continue;
+          // سفر بدون راننده قابل رزرو نیست و نمایش داده نمی‌شود.
+          if (trip.driverId == null) continue;
 
           final service = services[trip.serviceId];
           if (service == null) continue;

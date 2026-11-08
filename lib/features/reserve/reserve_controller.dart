@@ -44,7 +44,6 @@ class ReserveController extends ChangeNotifier with SafeNotifier {
   TripAvailability? _availability;
   List<LatLng>? _path;
   int? _stationId;
-  bool _standing = false;
   bool _submitting = false;
 
   LoadStatus get status => _status;
@@ -55,25 +54,17 @@ class ReserveController extends ChangeNotifier with SafeNotifier {
   /// مسیر خیابانی؛ تا رسیدن پاسخ مسیریابی (یا در صورت خطا) null است.
   List<LatLng>? get path => _path;
   int? get stationId => _stationId;
-  bool get standing => _standing;
   bool get submitting => _submitting;
 
   /// «سرویس از X به Y»؛ تا رسیدن ایستگاه‌ها نام ثبت‌شده‌ی سرویس.
   String get title => RouteSummary.of(_stops)?.title ?? service.name;
 
-  bool get canSubmit => _stationId != null && !_submitting;
+  bool get canSubmit => _stationId != null && !_submitting && !isFull;
 
-  /// «ایستاده» فقط وقتی انتخاب‌شدنی است که سفر ایستاده بپذیرد و صندلی خالی نمانده باشد.
-  bool get canChooseStanding {
+  /// رزرو فقط برای صندلی است؛ وقتی جا نیست، سوارشدن فقط در ایستگاه و با تأیید راننده ممکن است.
+  bool get isFull {
     final a = _availability;
-    return trip.allowStanding && a != null && !a.hasSeat;
-  }
-
-  /// ظرفیت پر است و رزرو به لیست انتظار می‌رود.
-  bool get willBeWaitlisted {
-    final a = _availability;
-    if (a == null) return false;
-    return _standing ? !a.hasStanding : !a.hasSeat;
+    return a != null && !a.hasSeat;
   }
 
   Future<void> load() async {
@@ -88,7 +79,6 @@ class ReserveController extends ChangeNotifier with SafeNotifier {
       ]);
       _stops = results[0] as List<RouteStationInfo>;
       _availability = results[1] as TripAvailability?;
-      if (!canChooseStanding) _standing = false;
       _status = LoadStatus.ready;
       notifyListeners();
       await _loadPath();
@@ -123,12 +113,6 @@ class ReserveController extends ChangeNotifier with SafeNotifier {
     notifyListeners();
   }
 
-  void selectStanding(bool value) {
-    if (value && !canChooseStanding) return;
-    _standing = value;
-    notifyListeners();
-  }
-
   /// موفق: رزرو ساخته‌شده. ناموفق: null و [error] پر می‌شود.
   Future<Reservation?> submit() async {
     final station = _stationId;
@@ -143,7 +127,7 @@ class ReserveController extends ChangeNotifier with SafeNotifier {
         tripId: trip.id,
         studentId: studentId,
         stationId: station,
-        standing: _standing,
+        standing: false,
       );
     } on ApiException catch (e) {
       _error = e.message;

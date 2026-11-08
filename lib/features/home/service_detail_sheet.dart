@@ -148,20 +148,13 @@ class _ServiceDetailState extends State<_ServiceDetail> {
                     label: context.t('detail.vehicle_live'),
                     tone: Tone.success,
                   ),
-                if (a != null) ...[
+                if (a != null && !a.capacityUnknown) ...[
                   StatusChip(
                     label: context.t('reserve.seats_free', {
                       'n': Fa.digits(a.seatedAvailable),
                     }),
                     tone: a.hasSeat ? Tone.success : Tone.danger,
                   ),
-                  if (a.allowStanding)
-                    StatusChip(
-                      label: context.t('reserve.standing_free', {
-                        'n': Fa.digits(a.standingAvailable),
-                      }),
-                      tone: a.hasStanding ? Tone.brand : Tone.neutral,
-                    ),
                 ],
               ],
             ),

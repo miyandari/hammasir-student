@@ -4,6 +4,7 @@ import 'package:hammasir_student/app/stores.dart';
 import 'package:hammasir_student/core/utils/persian.dart';
 import 'package:hammasir_student/features/home/home_screen.dart';
 import 'package:hammasir_student/features/notifications/notifications_screen.dart';
+import 'package:hammasir_student/features/profile/change_password_screen.dart';
 import 'package:hammasir_student/features/profile/profile_screen.dart';
 import 'package:hammasir_student/features/reservations/reservations_screen.dart';
 import 'package:hammasir_student/l10n/l10n.dart';
@@ -30,6 +31,21 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _stores.notifications.startPolling();
     _stores.myTrips.load();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _forcePasswordChange());
+  }
+
+  /// رمز اولیه/بازنشانی‌شده: دانشجو باید همین ابتدا رمز را عوض کند.
+  void _forcePasswordChange() {
+    if (!mounted || widget.session.profile?.mustChangePassword != true) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => ChangePasswordScreen(
+          forced: true,
+          onChanged: widget.session.markPasswordChanged,
+        ),
+      ),
+    );
   }
 
   @override
