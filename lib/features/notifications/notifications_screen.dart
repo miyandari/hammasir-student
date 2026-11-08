@@ -97,6 +97,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 }
 
 IconData _iconFor(String type) {
+  if (type == 'trip_cancelled' || type.endsWith('_cancelled')) {
+    return Icons.event_busy_rounded;
+  }
+  if (type == 'trip_delay') return Icons.schedule_rounded;
+  if (type.contains('substitute') || type.contains('breakdown')) {
+    return Icons.swap_horiz_rounded;
+  }
   if (type.contains('arrival')) return Icons.directions_bus_rounded;
   if (type.contains('penalty') || type.contains('block')) {
     return Icons.warning_amber_rounded;
